@@ -3,7 +3,9 @@
 Monolithe modulaire Spring Boot + Spring Modulith (TP Module 5.2, projet 2).
 Base de données : PostgreSQL `SunuBiblio` (tests : H2 en mémoire).
 
-Auteur : Mansour Niang — binôme : _à compléter_
+Binôme : Mansour Niang et Abdoulaye Ly. Dépôt : `abdoulayely-7/SunuBiblio`, branche `feat/sunubiblio`.
+
+Les neuf fonctionnalités F1 à F9 du sujet sont réalisées, plus le module `notifications` (hors liste).
 
 ## 1. Conception
 
@@ -74,3 +76,152 @@ Le piège du sujet est la paire `emprunts` / `penalites` : un emprunt doit deman
 - Appels directs : `emprunts` appelle `AdherentsApi`, `CatalogueApi` et `PenalitesApi`.
 - Événements : `emprunts` publie `EmpruntEnregistre` et `ExemplaireRendu`, `penalites` publie `PenaliteCreee` et `PenalitePayee` ; `notifications` les écoute.
 - Références par identifiant : seuls des `UUID` (identifiants d'adhérent, d'exemplaire, d'emprunt, de pénalité) et des DTO traversent les frontières, jamais un objet du domaine.
+
+## 2. Structure du code
+
+```text
+lydevtech.sunubiblio
+├── SunuBiblioApplication, DotenvEnvironmentPostProcessor      (racine, hors module)
+└── catalogue | adherents | penalites | emprunts | notifications
+    ├── <Module>Api, DTO, événements, exceptions publiques     (porte d'entrée, racine du module)
+    ├── package-info.java                                      (allowedDependencies)
+    └── internal
+        ├── domain          règles du métier (sans Spring) et ports (interfaces de dépôt)
+        ├── application     services (cas d'usage) et écouteurs d'événements
+        └── infrastructure  persistence (JDBC), web (contrôleurs), configuration
+```
+
+Chaque module possède ses tables (`catalogue_*`, `adherents_*`, `emprunts_*`, `penalites_*`) dans son propre script `src/main/resources/db/schema-<module>.sql`. Il n'y a aucune clé étrangère ni jointure entre modules.
+
+## 3. Lancer le projet
+
+Prérequis : JDK 17 ou plus, PostgreSQL avec une base nommée `SunuBiblio`.
+
+```bash
+cp .env.example .env        # puis renseigner DB_URL, DB_USERNAME et DB_PASSWORD
+./mvnw spring-boot:run
+```
+
+Le fichier `.env` n'est jamais commité. Les tables sont créées au démarrage.
+
+### L'API REST
+
+| Fonctionnalité | Requête |
+|---|---|
+| F1 Ajouter un livre et ses exemplaires | `POST /livres` `{"titre", "auteur", "nombreExemplaires"}` ; `POST /livres/{id}/exemplaires` |
+| F2 Retirer un exemplaire abîmé | `DELETE /exemplaires/{id}` |
+| F3 S'inscrire | `POST /adherents` `{"nom", "type": "ETUDIANT" ou "ENSEIGNANT"}` |
+| F4 Rechercher un livre | `GET /livres?q=texte` ; `GET /livres/{id}` |
+| F5 Emprunter | `POST /emprunts` `{"adherentId", "exemplaireId"}` |
+| F6 Rendre | `POST /emprunts/{id}/retour` (corps optionnel `{"dateRetour": "AAAA-MM-JJ"}`, par défaut aujourd'hui) |
+| F7 Pénalité de retard | automatique au retour en retard |
+| F8 Payer une pénalité | `POST /penalites/{id}/paiement` |
+| F9 Emprunts en cours et pénalités | `GET /situations/{adherentId}` |
+| Messages envoyés (SMS simulé) | `GET /notifications?adherentId=...` |
+
+Les erreurs suivent le format Problem Details (`application/problem+json`) : 400 requête invalide, 404 ressource inconnue, 409 règle du métier refusée.
+
+### Rejouer le scénario à la main
+
+```bash
+curl -X POST localhost:8080/livres -H "Content-Type: application/json" \
+  -d '{"titre":"Une si longue lettre","auteur":"Mariama Ba","nombreExemplaires":1}'
+curl -X POST localhost:8080/adherents -H "Content-Type: application/json" \
+  -d '{"nom":"Awa Diop","type":"ETUDIANT"}'
+curl -X POST localhost:8080/emprunts -H "Content-Type: application/json" \
+  -d '{"adherentId":"<id adhérent>","exemplaireId":"<id exemplaire>"}'
+curl localhost:8080/livres/<id livre>                     # 0 exemplaire disponible
+curl -X POST localhost:8080/emprunts/<id emprunt>/retour -H "Content-Type: application/json" \
+  -d '{"dateRetour":"<dateEcheance + 3 jours>"}'          # pénalité de 300 XOF
+curl -X POST localhost:8080/emprunts -H "Content-Type: application/json" \
+  -d '{"adherentId":"<id adhérent>","exemplaireId":"<id exemplaire>"}'   # 409 : refusé
+curl -X POST localhost:8080/penalites/<id pénalité>/paiement
+curl -X POST localhost:8080/emprunts -H "Content-Type: application/json" \
+  -d '{"adherentId":"<id adhérent>","exemplaireId":"<id exemplaire>"}'   # 201 : accepté
+```
+
+## 4. Tests
+
+```bash
+./mvnw test                      # toute la suite : 60 tests
+./mvnw test -Dtest=ModulesTest   # seulement le gardien des frontières
+```
+
+Résultat observé : `Tests run: 60, Failures: 0, Errors: 0, Skipped: 0`.
+
+| Test | Rôle |
+|---|---|
+| `ModulesTest` (2) | Le gardien : `verify()` doit passer, et les 5 modules attendus sont bien détectés (le test ne passe donc pas à vide). |
+| `ScenarioBoutEnBoutTest` (1) | Le scénario du sujet, étape par étape par l'API REST, avec chaque résultat annoncé vérifié (exemplaire indisponible, retard de 3 jours, pénalité de 300 XOF, nouvel emprunt refusé, paiement, emprunt accepté, messages envoyés). |
+| Tests de domaine (26) | Les règles du métier sans Spring ni base : états d'un exemplaire, quotas, 14 jours, 100 XOF par jour, blocage. |
+| Tests d'intégration (29) | Chaque module par l'API REST : catalogue, adhérents, pénalités (événements publiés), règles d'emprunt, notifications (aucun message pour une transaction annulée). |
+| `BaseDeTestTest` | Garde : les tests tournent sur H2 en mémoire, jamais sur la base PostgreSQL `SunuBiblio`. |
+
+## 5. Étape 3 : casser une frontière
+
+### 5.1 Accès à une classe `internal` d'un autre module
+
+J'ai ajouté dans `emprunts` une classe qui utilise `lydevtech.sunubiblio.catalogue.internal.domain.Exemplaire`. L'application compile (`./mvnw compile` réussit), mais `./mvnw test -Dtest=ModulesTest` échoue :
+
+```text
+org.springframework.modulith.core.Violations:
+- Module 'emprunts' depends on non-exposed type lydevtech.sunubiblio.catalogue.internal.domain.Exemplaire within module 'catalogue'!
+Exemplaire declares return type Exemplaire.exemplaireInterneDuCatalogue() in (ViolationVolontaire.java:0)
+- Module 'emprunts' depends on non-exposed type lydevtech.sunubiblio.catalogue.internal.domain.Exemplaire within module 'catalogue'!
+Method <lydevtech.sunubiblio.emprunts.internal.application.ViolationVolontaire.exemplaireInterneDuCatalogue()> has return type <lydevtech.sunubiblio.catalogue.internal.domain.Exemplaire> in (ViolationVolontaire.java:0)
+```
+
+Correction : j'ai supprimé la classe fautive. La bonne façon de faire est de passer par la porte d'entrée du module : `emprunts` appelle `CatalogueApi` (par exemple `marquerEmprunte(exemplaireId)`) et ne manipule que des identifiants et des DTO. Le domaine d'un module reste privé.
+
+### 5.2 Cycle entre modules
+
+J'ai ensuite fait écouter à `penalites` l'événement `ExemplaireRendu` d'`emprunts`, alors qu'`emprunts` appelle déjà `penalites`. L'application compile encore, mais `ModulesTest` échoue (message raccourci, `[...]` marque les lignes omitées) :
+
+```text
+org.springframework.modulith.core.Violations:
+- Cycle detected: Slice emprunts ->
+                Slice penalites ->
+                Slice emprunts
+  1. Dependencies of Slice emprunts
+    - Method <...EmpruntsService.emprunter(...)> calls method <...PenalitesApi.aPenaliteImpayee(java.util.UUID)> in (EmpruntsService.java:53)
+    [...]
+  2. Dependencies of Slice penalites
+    - Method <...EcouteurCirculaire.surRetour(lydevtech.sunubiblio.emprunts.ExemplaireRendu)> has parameter of type <lydevtech.sunubiblio.emprunts.ExemplaireRendu> in (EcouteurCirculaire.java:0)
+- Module 'penalites' depends on module 'emprunts' via lydevtech.sunubiblio.penalites.internal.application.EcouteurCirculaire -> lydevtech.sunubiblio.emprunts.ExemplaireRendu. Allowed targets: none.
+```
+
+Correction : j'ai supprimé l'écouteur. Écouter un événement crée une dépendance vers le module qui le définit : il faut choisir un seul sens (`emprunts` appelle `penalites`), et `penalites` n'a pas besoin de connaître `emprunts`.
+
+Dans les deux cas la suite complète est repassée au vert (60 tests).
+
+## 6. Décisions d'architecture
+
+| Décision | Contexte | Conséquences |
+|---|---|---|
+| Un seul sens `emprunts` → `penalites` (appel direct) | Un emprunt doit savoir s'il y a une pénalité impayée, et une pénalité naît d'un retour : deux sens feraient un cycle. | `emprunts` appelle `penalites` au retour en retard et pour le blocage ; `penalites` ne connaît personne. Le paiement d'une pénalité ne passe par aucun appel vers `emprunts`. |
+| Écouteurs `@TransactionalEventListener` (après commit) | Les messages ne doivent pas bloquer ni survivre à une opération annulée. | Un emprunt annulé ne prévient personne (testé). Les écouteurs sont synchrones : le scénario est déterministe. |
+| Notifications en mémoire et dans les logs | Les notifications sont de simples lignes de log d'après le sujet. | Le journal est perdu au redémarrage ; changer cela ne touche que `InMemoryNotificationRepository`. |
+| PostgreSQL à l'exécution, H2 en mémoire pour les tests | Base demandée : `SunuBiblio`. Les tests ne doivent jamais modifier les vraies données. | Le profil `test` impose H2 ; `BaseDeTestTest` le vérifie. Le `.env` a la priorité la plus basse et ne peut pas écraser une propriété de test. |
+| Chaque règle à un seul endroit | Les valeurs (3 et 5 exemplaires, 14 jours, 100 XOF) ne doivent pas être recopiées. | `TypeAdherent` (quotas), `Emprunt.DUREE_PRET_JOURS`, `Penalite.TARIF_PAR_JOUR_XOF`. |
+| Changements d'état par mise à jour conditionnelle (`... WHERE etat = ?`) | Deux emprunts simultanés du même exemplaire. | Un seul gagne ; l'autre reçoit un 409. |
+
+### Hypothèses retenues (règles ambiguës)
+
+1. Un retour le jour de l'échéance, ou avant, n'est pas en retard ; le retard se compte en jours calendaires après l'échéance.
+2. Un adhérent avec une pénalité impayée ne peut plus emprunter, mais peut toujours rendre ses exemplaires.
+3. Le quota compte les emprunts en cours (non rendus).
+4. Un exemplaire en cours d'emprunt ne peut pas être retiré (il doit d'abord être rendu) ; un exemplaire retiré ne peut plus être emprunté.
+5. Une pénalité est créée par emprunt rendu en retard et se paie en une seule fois.
+6. Le retour accepte une date (par défaut aujourd'hui, jamais avant la date d'emprunt) pour rejouer un retard sans attendre 14 jours.
+7. Pas d'authentification (hors périmètre du TP).
+
+### Glossaire
+
+| Terme | Sens | À éviter |
+|---|---|---|
+| Livre | Une œuvre du catalogue (titre, auteur). | document, ouvrage |
+| Exemplaire | Un exemplaire physique d'un livre, `DISPONIBLE`, `EMPRUNTE` ou `RETIRE`. | copie, volume |
+| Adhérent | Étudiant ou enseignant inscrit à la bibliothèque. | usager, lecteur, client |
+| Emprunt | Le prêt d'un exemplaire à un adhérent, pour 14 jours. | prêt (en dehors de la durée), location |
+| Retour | Le moment où l'adhérent rend l'exemplaire. | restitution |
+| Pénalité | Somme due pour un retard (100 XOF par jour), `IMPAYEE` ou `PAYEE`. | amende, frais de retard |
