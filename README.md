@@ -125,7 +125,24 @@ Contrat OpenAPI : [`docs/openapi.yaml`](docs/openapi.yaml), identique à celui p
 | F8 Payer une pénalité | `POST /penalites/{id}/paiement` |
 | F9 Emprunts en cours et pénalités | `GET /situations/{adherentId}` |
 
-Les erreurs suivent le format Problem Details (`application/problem+json`) : 400 requête invalide, 404 ressource inconnue, 409 règle du métier refusée.
+### Les erreurs
+
+Toutes les erreurs suivent le même format Problem Details (`application/problem+json`, RFC 9457) : `status`, `title` et `detail`, un message en français qui dit ce qui ne va pas et comment corriger, jamais de détail interne.
+
+| Code | Cas | Exemple de message |
+|---|---|---|
+| 400 | Corps absent ou JSON mal formé | « Le corps de la requête n'est pas un JSON valide : vérifiez les guillemets, les virgules et les accolades. » |
+| 400 | Valeur d'énumération inconnue | « Le champ 'type' n'accepte pas la valeur 'VISITEUR' : valeurs possibles : ETUDIANT, ENSEIGNANT. » |
+| 400 | Champ du mauvais type ou date mal formée | « Le champ 'dateRetour' n'est pas valide : une date valide au format AAAA-MM-JJ est attendue (valeur reçue : '16/03/2026'). » |
+| 400 | Champs manquants ou hors limites | `detail` résume, et `erreurs` liste chaque champ : `[{"champ": "titre", "message": "Le titre du livre est obligatoire."}, ...]` |
+| 400 | Identifiant mal formé dans l'adresse | « Le paramètre 'livreId' n'est pas valide : un identifiant UUID est attendu, par exemple 3fa85f64-... (valeur reçue : 'abc'). » |
+| 400 | Date de retour avant la date d'emprunt | « La date de retour (2000-01-01) ne peut pas précéder la date d'emprunt (2026-03-02) : indiquez une date postérieure ou égale. » |
+| 404 | Livre, exemplaire, adhérent, emprunt ou pénalité inconnu, ou route inconnue | « Aucun adhérent ne correspond à l'identifiant ... : vérifiez-le ou inscrivez l'adhérent avant de continuer. » |
+| 405 / 415 / 406 | Méthode, type de contenu ou format non pris en charge | « La méthode PUT n'est pas autorisée sur cette adresse : utilisez GET ou POST. » |
+| 409 | Règle du métier refusée (quota, pénalité impayée, exemplaire indisponible, déjà rendu ou payé) | « L'adhérent ... a déjà 3 exemplaires empruntés, ce qui est son maximum : il doit en rendre un avant d'en emprunter un autre. » |
+| 409 | Conflit avec des données existantes | « L'opération est en conflit avec des données existantes (doublon ou référence inexistante) : vérifiez les identifiants envoyés. » |
+| 500 | Erreur inattendue | « Une erreur inattendue s'est produite [...] communiquez l'identifiant de suivi 3f9a1c2e à l'équipe technique. » (la cause n'est que dans les logs, avec le même `traceId`) |
+| 503 | Base de données indisponible | « La base de données est momentanément indisponible : réessayez dans quelques instants. » (avec l'en-tête `Retry-After`) |
 
 Pour regénérer le contrat après un changement de l'API : `./mvnw test -Dtest=ContratOpenApiTest -Dopenapi.regenerer=true`.
 
@@ -151,11 +168,11 @@ curl -X POST localhost:8080/emprunts -H "Content-Type: application/json" \
 ## 4. Tests
 
 ```bash
-./mvnw test                      # toute la suite : 66 tests
+./mvnw test                      # toute la suite : 90 tests
 ./mvnw test -Dtest=ModulesTest   # seulement le gardien des frontières
 ```
 
-Résultat observé : `Tests run: 66, Failures: 0, Errors: 0, Skipped: 0`.
+Résultat observé : `Tests run: 90, Failures: 0, Errors: 0, Skipped: 0`.
 
 | Test | Rôle |
 |---|---|
@@ -163,6 +180,7 @@ Résultat observé : `Tests run: 66, Failures: 0, Errors: 0, Skipped: 0`.
 | `ScenarioBoutEnBoutTest` (1) | Le scénario du sujet, étape par étape par l'API REST, avec chaque résultat annoncé vérifié (exemplaire indisponible, retard de 3 jours, pénalité de 300 XOF, nouvel emprunt refusé, paiement, emprunt accepté). |
 | Tests de domaine (26) | Les règles du métier sans Spring ni base : états d'un exemplaire, quotas, 14 jours, 100 XOF par jour, blocage. |
 | Tests d'intégration (30) | Chaque module par l'API REST : catalogue, adhérents, pénalités (événements publiés), règles d'emprunt, blocage par événements (dont une pénalité annulée avec sa transaction qui ne bloque personne). |
+| `ErreursApiIntegrationTest` (20) et `ErreursServeurIntegrationTest` (4) | Chaque cas d'erreur de l'API : bon code, format Problem Details et message exact ; les pannes du serveur (500, 503, conflit de base) ne montrent aucun détail interne. |
 | `ContratOpenApiTest` (5) | Tous les endpoints sont décrits, les erreurs suivent Problem Details, les codes de succès sont les vrais, Swagger UI est servi, et `docs/openapi.yaml` est identique au contrat de l'application. |
 | `BaseDeTestTest` | Garde : les tests tournent sur H2 en mémoire, jamais sur la base PostgreSQL `SunuBiblio`. |
 
@@ -203,7 +221,7 @@ org.springframework.modulith.core.Violations:
 
 Correction : j'ai supprimé la classe fautive. Tout passe par le prêt, dans un seul sens : `penalites` reçoit ce dont elle a besoin en paramètres (`creerPourRetard(adherentId, empruntId, joursDeRetard)`) et ne demande rien à `emprunts` ; si elle doit prévenir quelqu'un, elle annonce un événement que le prêt écoute.
 
-Dans les deux cas la suite complète est repassée au vert (66 tests).
+Dans les deux cas la suite complète est repassée au vert (90 tests).
 
 ## 6. Décisions d'architecture
 

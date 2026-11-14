@@ -14,7 +14,7 @@ public record Exemplaire(UUID id, UUID livreId, EtatExemplaire etat) {
 
     public Exemplaire emprunte() {
         if (etat != EtatExemplaire.DISPONIBLE) {
-            throw new ExemplaireIndisponibleException(id);
+            throw new ExemplaireIndisponibleException(id, etat);
         }
         return avecEtat(EtatExemplaire.EMPRUNTE);
     }

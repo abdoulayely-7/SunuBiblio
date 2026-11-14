@@ -5,6 +5,6 @@ import java.util.UUID;
 public class EmpruntIntrouvableException extends RuntimeException {
 
     public EmpruntIntrouvableException(UUID empruntId) {
-        super("Emprunt introuvable : " + empruntId);
+        super("Aucun emprunt ne correspond à l'identifiant " + empruntId + " : vérifiez-le dans la liste des emprunts en cours.");
     }
 }

@@ -1,5 +1,6 @@
 package lydevtech.sunubiblio.emprunts.internal.domain;
 
+import lydevtech.sunubiblio.emprunts.DateRetourInvalideException;
 import lydevtech.sunubiblio.emprunts.EmpruntDejaRenduException;
 import org.junit.jupiter.api.Test;
 
@@ -58,6 +59,6 @@ class EmpruntTest {
 
     @Test
     void une_date_de_retour_avant_la_date_d_emprunt_est_refusee() {
-        assertThrows(IllegalArgumentException.class, () -> unEmprunt().rendu(DEBUT.minusDays(1)));
+        assertThrows(DateRetourInvalideException.class, () -> unEmprunt().rendu(DEBUT.minusDays(1)));
     }
 }

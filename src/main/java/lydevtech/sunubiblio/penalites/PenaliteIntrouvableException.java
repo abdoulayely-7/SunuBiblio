@@ -5,6 +5,6 @@ import java.util.UUID;
 public class PenaliteIntrouvableException extends RuntimeException {
 
     public PenaliteIntrouvableException(UUID penaliteId) {
-        super("Pénalité introuvable : " + penaliteId);
+        super("Aucune pénalité ne correspond à l'identifiant " + penaliteId + " : vérifiez-le dans la situation de l'adhérent.");
     }
 }

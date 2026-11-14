@@ -25,6 +25,7 @@ class PenalitesController {
     @Operation(summary = "Payer une pénalité (F8)",
             description = "Une fois toutes ses pénalités payées, l'adhérent peut de nouveau emprunter.")
     @ApiResponse(responseCode = "200", description = "Pénalité payée")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     @ApiResponse(responseCode = "409", ref = "Conflit")
     PenaliteDto payer(@PathVariable UUID penaliteId) {

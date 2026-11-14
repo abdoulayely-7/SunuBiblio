@@ -43,6 +43,7 @@ class CatalogueController {
     @PostMapping("/livres/{livreId}/exemplaires")
     @Operation(summary = "Ajouter un exemplaire à un livre existant (F1)")
     @ApiResponse(responseCode = "201", description = "Exemplaire créé, disponible")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     ResponseEntity<ExemplaireDto> ajouterExemplaire(@PathVariable UUID livreId) {
         ExemplaireDto exemplaire = catalogue.ajouterExemplaire(livreId);
@@ -53,6 +54,7 @@ class CatalogueController {
     @Operation(summary = "Retirer un exemplaire abîmé (F2)",
             description = "Un exemplaire en cours d'emprunt ne peut pas être retiré : il doit d'abord être rendu.")
     @ApiResponse(responseCode = "204", description = "Exemplaire retiré du catalogue")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     @ApiResponse(responseCode = "409", ref = "Conflit")
     ResponseEntity<Void> retirerExemplaire(@PathVariable UUID exemplaireId) {
@@ -63,6 +65,7 @@ class CatalogueController {
     @GetMapping("/livres/{livreId}")
     @Operation(summary = "Consulter un livre et l'état de ses exemplaires")
     @ApiResponse(responseCode = "200", description = "Le livre, avec le nombre d'exemplaires disponibles")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     LivreDto trouverLivre(@PathVariable UUID livreId) {
         return catalogue.trouverLivre(livreId);

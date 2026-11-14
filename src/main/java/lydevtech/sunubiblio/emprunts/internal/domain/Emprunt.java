@@ -1,5 +1,6 @@
 package lydevtech.sunubiblio.emprunts.internal.domain;
 
+import lydevtech.sunubiblio.emprunts.DateRetourInvalideException;
 import lydevtech.sunubiblio.emprunts.EmpruntDejaRenduException;
 
 import java.time.LocalDate;
@@ -26,7 +27,7 @@ public record Emprunt(UUID id, UUID adherentId, UUID exemplaireId, LocalDate dat
             throw new EmpruntDejaRenduException(id);
         }
         if (date.isBefore(dateEmprunt)) {
-            throw new IllegalArgumentException("La date de retour ne peut pas précéder la date d'emprunt");
+            throw new DateRetourInvalideException(date, dateEmprunt);
         }
         return new Emprunt(id, adherentId, exemplaireId, dateEmprunt, dateEcheance, date);
     }

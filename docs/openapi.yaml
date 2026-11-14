@@ -3,7 +3,7 @@ info:
   title: SunuBiblio
   description: "Prêts de la bibliothèque universitaire : livres et exemplaires, adhé\
     rents, emprunts, retours et pénalités de retard. Toutes les erreurs suivent le\
-    \ format Problem Details (RFC 9457)."
+    \ format Problem Details (RFC 9457), avec un message en français explicite."
   version: 0.0.1
 servers:
 - url: http://localhost:8080
@@ -40,10 +40,16 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/PenaliteDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
         "409":
           $ref: "#/components/responses/Conflit"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /livres:
     get:
       tags:
@@ -68,6 +74,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/LivreDto"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
     post:
       tags:
       - Catalogue
@@ -88,6 +98,10 @@ paths:
                 $ref: "#/components/schemas/LivreDto"
         "400":
           $ref: "#/components/responses/RequeteInvalide"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /livres/{livreId}/exemplaires:
     post:
       tags:
@@ -108,8 +122,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/ExemplaireDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /emprunts:
     post:
       tags:
@@ -137,6 +157,10 @@ paths:
           $ref: "#/components/responses/Introuvable"
         "409":
           $ref: "#/components/responses/Conflit"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /emprunts/{empruntId}/retour:
     post:
       tags:
@@ -171,6 +195,10 @@ paths:
           $ref: "#/components/responses/Introuvable"
         "409":
           $ref: "#/components/responses/Conflit"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /adherents:
     post:
       tags:
@@ -194,6 +222,10 @@ paths:
                 $ref: "#/components/schemas/AdherentDto"
         "400":
           $ref: "#/components/responses/RequeteInvalide"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /situations/{adherentId}:
     get:
       tags:
@@ -214,8 +246,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/SituationAdherentDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /livres/{livreId}:
     get:
       tags:
@@ -236,8 +274,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/LivreDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /emprunts/{empruntId}:
     get:
       tags:
@@ -258,8 +302,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/EmpruntDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /adherents/{adherentId}:
     get:
       tags:
@@ -280,8 +330,14 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AdherentDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
   /exemplaires/{exemplaireId}:
     delete:
       tags:
@@ -300,10 +356,16 @@ paths:
       responses:
         "204":
           description: Exemplaire retiré du catalogue
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
         "409":
           $ref: "#/components/responses/Conflit"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
 components:
   schemas:
     ProblemDetail:
@@ -315,17 +377,38 @@ components:
           example: about:blank
         title:
           type: string
-          example: Opération refusée
+          example: Emprunt refusé
         status:
           type: integer
           format: int32
           example: 409
         detail:
           type: string
-          example: "L'adhérent a une pénalité impayée : il ne peut plus emprunter"
+          example: "L'adhérent a une pénalité de retard impayée : il doit d'abord\
+            \ la payer avant de pouvoir emprunter de nouveau."
         instance:
           type: string
           example: /emprunts
+        erreurs:
+          type: array
+          description: "Présent pour les erreurs de validation : un élément par champ\
+            \ fautif."
+          items:
+            $ref: "#/components/schemas/ErreurChamp"
+        traceId:
+          type: string
+          description: "Présent pour les erreurs 500 et 503 : identifiant à communiquer\
+            \ à l'équipe technique."
+          example: 3f9a1c2e
+    ErreurChamp:
+      type: object
+      properties:
+        champ:
+          type: string
+          example: titre
+        message:
+          type: string
+          example: Le titre du livre est obligatoire.
     PenaliteDto:
       type: object
       properties:
@@ -354,16 +437,20 @@ components:
       properties:
         titre:
           type: string
-          minLength: 1
+          maxLength: 255
+          minLength: 0
         auteur:
           type: string
-          minLength: 1
+          maxLength: 255
+          minLength: 0
         nombreExemplaires:
           type: integer
           format: int32
+          maximum: 500
           minimum: 1
       required:
       - auteur
+      - nombreExemplaires
       - titre
     ExemplaireDto:
       type: object
@@ -451,7 +538,8 @@ components:
       properties:
         nom:
           type: string
-          minLength: 1
+          maxLength: 255
+          minLength: 0
         type:
           type: string
           enum:
@@ -492,7 +580,9 @@ components:
             $ref: "#/components/schemas/PenaliteDto"
   responses:
     RequeteInvalide:
-      description: "Requête invalide ou incomplète (champ manquant, valeur incorrecte)."
+      description: "Requête invalide : corps absent ou illisible, champ manquant ou\
+        \ incorrect, identifiant mal formé. Le détail dit quel champ corriger ; `erreurs`\
+        \ liste chaque champ fautif."
       content:
         application/problem+json:
           schema:
@@ -505,6 +595,20 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
     Conflit:
       description: "Règle du métier refusée (quota, pénalité impayée, exemplaire indisponible...)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ErreurInterne:
+      description: Erreur inattendue du serveur. Le détail contient un identifiant
+        de suivi (`traceId`) à communiquer à l'équipe technique.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    ServiceIndisponible:
+      description: "Base de données momentanément indisponible : réessayer dans quelques\
+        \ instants (en-tête Retry-After)."
       content:
         application/problem+json:
           schema:

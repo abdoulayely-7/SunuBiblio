@@ -56,6 +56,7 @@ class EmpruntsController {
     @GetMapping("/emprunts/{empruntId}")
     @Operation(summary = "Consulter un emprunt")
     @ApiResponse(responseCode = "200", description = "L'emprunt")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     EmpruntDto trouver(@PathVariable UUID empruntId) {
         return emprunts.trouver(empruntId);
@@ -64,6 +65,7 @@ class EmpruntsController {
     @GetMapping("/situations/{adherentId}")
     @Operation(summary = "Consulter ses emprunts en cours et ses pénalités (F9)")
     @ApiResponse(responseCode = "200", description = "Les emprunts en cours et toutes les pénalités de l'adhérent")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     SituationAdherentDto situation(@PathVariable UUID adherentId) {
         return emprunts.situation(adherentId);

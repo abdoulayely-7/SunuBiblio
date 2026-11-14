@@ -14,8 +14,3 @@ spring:
     init:
       mode: always
       schema-locations: classpath*:db/schema-*.sql
-
-  # Toutes les erreurs de l'API suivent le format Problem Details (RFC 9457)
-  mvc:
-    problemdetails:
-      enabled: true

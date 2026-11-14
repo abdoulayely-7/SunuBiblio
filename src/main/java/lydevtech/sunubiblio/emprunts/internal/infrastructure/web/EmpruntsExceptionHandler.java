@@ -4,16 +4,20 @@ import lydevtech.sunubiblio.adherents.AdherentIntrouvableException;
 import lydevtech.sunubiblio.catalogue.ExemplaireEtatInvalideException;
 import lydevtech.sunubiblio.catalogue.ExemplaireIndisponibleException;
 import lydevtech.sunubiblio.catalogue.ExemplaireIntrouvableException;
+import lydevtech.sunubiblio.emprunts.DateRetourInvalideException;
 import lydevtech.sunubiblio.emprunts.EmpruntDejaRenduException;
 import lydevtech.sunubiblio.emprunts.EmpruntIntrouvableException;
 import lydevtech.sunubiblio.emprunts.PenaliteImpayeeException;
 import lydevtech.sunubiblio.emprunts.QuotaEmpruntsAtteintException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = EmpruntsController.class)
+@Order(Ordered.HIGHEST_PRECEDENCE)
 class EmpruntsExceptionHandler {
 
     @ExceptionHandler({EmpruntIntrouvableException.class, AdherentIntrouvableException.class,
@@ -33,8 +37,9 @@ class EmpruntsExceptionHandler {
         return probleme(HttpStatus.CONFLICT, "Opération refusée", e);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    ProblemDetail requeteInvalide(IllegalArgumentException e) {
+
+    @ExceptionHandler(DateRetourInvalideException.class)
+    ProblemDetail requeteInvalide(DateRetourInvalideException e) {
         return probleme(HttpStatus.BAD_REQUEST, "Requête invalide", e);
     }
 

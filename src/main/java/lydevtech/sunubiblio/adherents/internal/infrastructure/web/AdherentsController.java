@@ -39,6 +39,7 @@ class AdherentsController {
     @GetMapping("/adherents/{adherentId}")
     @Operation(summary = "Consulter un adhérent")
     @ApiResponse(responseCode = "200", description = "L'adhérent et son quota d'emprunts")
+    @ApiResponse(responseCode = "400", ref = "RequeteInvalide")
     @ApiResponse(responseCode = "404", ref = "Introuvable")
     AdherentDto trouver(@PathVariable UUID adherentId) {
         return adherents.trouver(adherentId);
