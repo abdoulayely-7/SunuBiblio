@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: SunuBiblio
+
+  # Valeurs lues dans le fichier .env local (non commite, voir .env.example)
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/SunuBiblio}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  # Chaque module possede son propre script : db/schema-<module>.sql
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath*:db/schema-*.sql
+
+  # Toutes les erreurs de l'API suivent le format Problem Details (RFC 9457)
+  mvc:
+    problemdetails:
+      enabled: true

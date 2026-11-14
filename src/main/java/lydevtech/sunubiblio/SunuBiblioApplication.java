@@ -9,4 +9,5 @@ public class SunuBiblioApplication {
     public static void main(String[] args) {
         SpringApplication.run(SunuBiblioApplication.class, args);
     }
+
 }
