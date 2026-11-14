@@ -17,7 +17,7 @@ Auteur : Mansour Niang — binôme : _à compléter_
 | `emprunts` | Prêter et reprendre les exemplaires en appliquant les règles de prêt (quota, 14 jours, blocage). | Emprunt (dates de prêt, d'échéance et de retour) | `EmpruntsApi`, `EmpruntDto`, `RetourDto`, `SituationAdherentDto` | `EmpruntEnregistre`, `ExemplaireRendu` | `adherents`, `catalogue`, `penalites` |
 | `notifications` | Prévenir l'adhérent (SMS simulé dans les logs). | Journal des messages (en mémoire) | `NotificationsApi`, `NotificationDto` | — | `emprunts`, `penalites` |
 
-Chaque module est un package sous `com.sunubiblio`. La porte d'entrée (interface, DTO, événements, exceptions publiques) est à la racine du module ; tout le reste est dans `internal` (`domain`, `application`, `infrastructure`).
+Chaque module est un package sous `lydevtech.sunubiblio`. La porte d'entrée (interface, DTO, événements, exceptions publiques) est à la racine du module ; tout le reste est dans `internal` (`domain`, `application`, `infrastructure`).
 
 `notifications` n'est pas dans la liste F1 à F9 du sujet : c'est un ajout volontaire (prévenir l'adhérent), qui sert aussi de module écouteur d'événements.
 

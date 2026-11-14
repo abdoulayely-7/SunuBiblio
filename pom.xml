@@ -5,18 +5,18 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>4.1.2</version>
         <relativePath/>
     </parent>
-    <groupId>com.sunubiblio</groupId>
-    <artifactId>sunubiblio</artifactId>
+    <groupId>lydevtech</groupId>
+    <artifactId>SunuBiblio</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>SunuBiblio</name>
     <description>Prets de la bibliotheque universitaire - monolithe modulaire</description>
 
     <properties>
         <java.version>17</java.version>
-        <spring-modulith.version>2.1.2</spring-modulith.version>
+        <spring-modulith.version>2.1.1</spring-modulith.version>
     </properties>
 
     <dependencyManagement>
