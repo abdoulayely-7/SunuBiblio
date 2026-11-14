@@ -49,14 +49,6 @@ class JdbcPenaliteRepository implements PenaliteRepository {
     }
 
     @Override
-    public boolean existeImpayee(UUID adherentId) {
-        Integer nombre = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM penalites_penalite WHERE adherent_id = ? AND statut = ?",
-                Integer.class, adherentId, StatutPenalite.IMPAYEE.name());
-        return nombre != null && nombre > 0;
-    }
-
-    @Override
     public boolean changerStatut(UUID id, StatutPenalite attendu, StatutPenalite nouveau) {
         return jdbc.update("UPDATE penalites_penalite SET statut = ? WHERE id = ? AND statut = ?",
                 nouveau.name(), id, attendu.name()) > 0;

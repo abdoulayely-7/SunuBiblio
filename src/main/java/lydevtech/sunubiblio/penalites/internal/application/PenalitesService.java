@@ -38,12 +38,6 @@ class PenalitesService implements PenalitesApi {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean aPenaliteImpayee(UUID adherentId) {
-        return penalites.existeImpayee(adherentId);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<PenaliteDto> penalitesDe(UUID adherentId) {
         return penalites.parAdherent(adherentId).stream().map(PenalitesService::versDto).toList();
     }

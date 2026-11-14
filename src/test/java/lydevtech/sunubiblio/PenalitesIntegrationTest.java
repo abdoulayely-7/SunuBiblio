@@ -18,7 +18,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,7 +52,6 @@ class PenalitesIntegrationTest {
 
         assertEquals(300, penalite.montantXof());
         assertEquals(StatutPenalite.IMPAYEE, penalite.statut());
-        assertTrue(penalites.aPenaliteImpayee(adherentId));
         assertEquals(1, evenements.stream(PenaliteCreee.class)
                 .filter(e -> e.penaliteId().equals(penalite.id()) && e.montantXof() == 300).count());
     }
@@ -68,7 +66,6 @@ class PenalitesIntegrationTest {
                 .andExpect(jsonPath("$.statut").value("PAYEE"))
                 .andExpect(jsonPath("$.montantXof").value(200));
 
-        assertFalse(penalites.aPenaliteImpayee(adherentId));
         assertEquals(1, evenements.stream(PenalitePayee.class)
                 .filter(e -> e.penaliteId().equals(penalite.id())).count());
     }
@@ -90,6 +87,5 @@ class PenalitesIntegrationTest {
 
         assertEquals(1, penalites.penalitesDe(adherentA).size());
         assertTrue(penalites.penalitesDe(adherentB).isEmpty());
-        assertFalse(penalites.aPenaliteImpayee(adherentB));
     }
 }

@@ -5,18 +5,16 @@ import lydevtech.sunubiblio.adherents.AdherentsApi;
 import lydevtech.sunubiblio.catalogue.CatalogueApi;
 import lydevtech.sunubiblio.emprunts.EmpruntDejaRenduException;
 import lydevtech.sunubiblio.emprunts.EmpruntDto;
-import lydevtech.sunubiblio.emprunts.EmpruntEnregistre;
 import lydevtech.sunubiblio.emprunts.EmpruntIntrouvableException;
 import lydevtech.sunubiblio.emprunts.EmpruntsApi;
-import lydevtech.sunubiblio.emprunts.ExemplaireRendu;
 import lydevtech.sunubiblio.emprunts.RetourDto;
 import lydevtech.sunubiblio.emprunts.SituationAdherentDto;
+import lydevtech.sunubiblio.emprunts.internal.domain.BlocageRepository;
 import lydevtech.sunubiblio.emprunts.internal.domain.Emprunt;
 import lydevtech.sunubiblio.emprunts.internal.domain.EmpruntRepository;
 import lydevtech.sunubiblio.emprunts.internal.domain.RegleEmprunt;
 import lydevtech.sunubiblio.penalites.PenaliteDto;
 import lydevtech.sunubiblio.penalites.PenalitesApi;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+/** Le pret : tout passe par ici. C'est le seul module qui depend des autres. */
 @Service
 @Transactional
 class EmpruntsService implements EmpruntsApi {
@@ -33,16 +32,16 @@ class EmpruntsService implements EmpruntsApi {
     private final CatalogueApi catalogue;
     private final PenalitesApi penalites;
     private final EmpruntRepository emprunts;
-    private final ApplicationEventPublisher evenements;
+    private final BlocageRepository blocages;
     private final Clock horloge;
 
     EmpruntsService(AdherentsApi adherents, CatalogueApi catalogue, PenalitesApi penalites,
-                    EmpruntRepository emprunts, ApplicationEventPublisher evenements, Clock horloge) {
+                    EmpruntRepository emprunts, BlocageRepository blocages, Clock horloge) {
         this.adherents = adherents;
         this.catalogue = catalogue;
         this.penalites = penalites;
         this.emprunts = emprunts;
-        this.evenements = evenements;
+        this.blocages = blocages;
         this.horloge = horloge;
     }
 
@@ -50,13 +49,12 @@ class EmpruntsService implements EmpruntsApi {
     public EmpruntDto emprunter(UUID adherentId, UUID exemplaireId) {
         AdherentDto adherent = adherents.trouver(adherentId);
         RegleEmprunt.verifier(adherentId, adherent.quotaEmprunts(),
-                emprunts.compterEnCoursDe(adherentId), penalites.aPenaliteImpayee(adherentId));
+                emprunts.compterEnCoursDe(adherentId), blocages.adherentBloque(adherentId));
 
         catalogue.marquerEmprunte(exemplaireId);
 
         Emprunt emprunt = Emprunt.ouvrir(adherentId, exemplaireId, LocalDate.now(horloge));
         emprunts.ajouter(emprunt);
-        evenements.publishEvent(new EmpruntEnregistre(emprunt.id(), adherentId, exemplaireId, emprunt.dateEcheance()));
         return versDto(emprunt);
     }
 
@@ -72,8 +70,6 @@ class EmpruntsService implements EmpruntsApi {
 
         int jours = rendu.joursDeRetard();
         PenaliteDto penalite = jours > 0 ? penalites.creerPourRetard(emprunt.adherentId(), empruntId, jours) : null;
-
-        evenements.publishEvent(new ExemplaireRendu(empruntId, emprunt.adherentId(), emprunt.exemplaireId(), jours));
         return new RetourDto(versDto(rendu), jours, penalite);
     }
 

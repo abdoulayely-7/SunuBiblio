@@ -7,8 +7,6 @@ public interface PenalitesApi {
 
     PenaliteDto creerPourRetard(UUID adherentId, UUID empruntId, int joursDeRetard);
 
-    boolean aPenaliteImpayee(UUID adherentId);
-
     List<PenaliteDto> penalitesDe(UUID adherentId);
 
     PenaliteDto payer(UUID penaliteId);

@@ -14,8 +14,6 @@ public interface PenaliteRepository {
 
     List<Penalite> parAdherent(UUID adherentId);
 
-    boolean existeImpayee(UUID adherentId);
-
     /** Passe de {@code attendu} a {@code nouveau} seulement si le statut n'a pas change entre-temps. */
     boolean changerStatut(UUID id, StatutPenalite attendu, StatutPenalite nouveau);
 }
