@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS adherents_adherent (
+    id UUID PRIMARY KEY,
+    nom VARCHAR(255) NOT NULL,
+    type VARCHAR(16) NOT NULL
+);
