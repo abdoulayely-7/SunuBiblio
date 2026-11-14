@@ -1,0 +1,13 @@
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+### Secrets ###
+.env
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
