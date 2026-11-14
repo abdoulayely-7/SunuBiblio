@@ -1,0 +1,511 @@
+openapi: 3.1.0
+info:
+  title: SunuBiblio
+  description: "Prêts de la bibliothèque universitaire : livres et exemplaires, adhé\
+    rents, emprunts, retours et pénalités de retard. Toutes les erreurs suivent le\
+    \ format Problem Details (RFC 9457)."
+  version: 0.0.1
+servers:
+- url: http://localhost:8080
+  description: Serveur local
+tags:
+- name: Catalogue
+  description: "Livres et exemplaires (F1, F2, F4)"
+- name: Adhérents
+  description: Inscription des étudiants et des enseignants (F3)
+- name: Emprunts
+  description: "Prêts, retours et situation d'un adhérent (F5, F6, F7, F9)"
+- name: Pénalités
+  description: Paiement des pénalités de retard (F8)
+paths:
+  /penalites/{penaliteId}/paiement:
+    post:
+      tags:
+      - Pénalités
+      summary: Payer une pénalité (F8)
+      description: "Une fois toutes ses pénalités payées, l'adhérent peut de nouveau\
+        \ emprunter."
+      operationId: payer
+      parameters:
+      - name: penaliteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Pénalité payée
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PenaliteDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "409":
+          $ref: "#/components/responses/Conflit"
+  /livres:
+    get:
+      tags:
+      - Catalogue
+      summary: Rechercher un livre et voir les exemplaires disponibles (F4)
+      operationId: rechercher
+      parameters:
+      - name: q
+        in: query
+        description: "Texte cherché dans le titre ou l'auteur, sans tenir compte des\
+          \ majuscules"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Les livres dont le titre ou l'auteur contient le texte (tous
+            sans texte)
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LivreDto"
+    post:
+      tags:
+      - Catalogue
+      summary: Ajouter un livre et ses exemplaires (F1)
+      operationId: ajouterLivre
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjouterLivreRequest"
+        required: true
+      responses:
+        "201":
+          description: "Livre créé, tous ses exemplaires sont disponibles"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LivreDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+  /livres/{livreId}/exemplaires:
+    post:
+      tags:
+      - Catalogue
+      summary: Ajouter un exemplaire à un livre existant (F1)
+      operationId: ajouterExemplaire
+      parameters:
+      - name: livreId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "201":
+          description: "Exemplaire créé, disponible"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExemplaireDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+  /emprunts:
+    post:
+      tags:
+      - Emprunts
+      summary: Emprunter un exemplaire (F5)
+      description: "Le prêt dure 14 jours. Refusé si l'adhérent a atteint son quota,\
+        \ s'il a une pénalité impayée ou si l'exemplaire n'est pas disponible."
+      operationId: emprunter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmpruntRequest"
+        required: true
+      responses:
+        "201":
+          description: "Emprunt enregistré, avec sa date d'échéance"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EmpruntDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "409":
+          $ref: "#/components/responses/Conflit"
+  /emprunts/{empruntId}/retour:
+    post:
+      tags:
+      - Emprunts
+      summary: "Rendre un exemplaire (F6, F7)"
+      description: "Sans corps, la date de retour est celle du jour. Un retour aprè\
+        s l'échéance crée une pénalité de 100 XOF par jour de retard."
+      operationId: rendre
+      parameters:
+      - name: empruntId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetourRequest"
+      responses:
+        "200":
+          description: Retour enregistré ; la pénalité est absente si l'exemplaire
+            est rendu à temps
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RetourDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "409":
+          $ref: "#/components/responses/Conflit"
+  /adherents:
+    post:
+      tags:
+      - Adhérents
+      summary: "S'inscrire comme adhérent, étudiant ou enseignant (F3)"
+      description: Le quota d'emprunts simultanés est de 3 pour un étudiant et de
+        5 pour un enseignant.
+      operationId: inscrire
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InscriptionRequest"
+        required: true
+      responses:
+        "201":
+          description: Adhérent inscrit
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AdherentDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+  /situations/{adherentId}:
+    get:
+      tags:
+      - Emprunts
+      summary: Consulter ses emprunts en cours et ses pénalités (F9)
+      operationId: situation
+      parameters:
+      - name: adherentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: Les emprunts en cours et toutes les pénalités de l'adhérent
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SituationAdherentDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+  /livres/{livreId}:
+    get:
+      tags:
+      - Catalogue
+      summary: Consulter un livre et l'état de ses exemplaires
+      operationId: trouverLivre
+      parameters:
+      - name: livreId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: "Le livre, avec le nombre d'exemplaires disponibles"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LivreDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+  /emprunts/{empruntId}:
+    get:
+      tags:
+      - Emprunts
+      summary: Consulter un emprunt
+      operationId: trouver
+      parameters:
+      - name: empruntId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: L'emprunt
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/EmpruntDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+  /adherents/{adherentId}:
+    get:
+      tags:
+      - Adhérents
+      summary: Consulter un adhérent
+      operationId: trouver_1
+      parameters:
+      - name: adherentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: L'adhérent et son quota d'emprunts
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AdherentDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+  /exemplaires/{exemplaireId}:
+    delete:
+      tags:
+      - Catalogue
+      summary: Retirer un exemplaire abîmé (F2)
+      description: "Un exemplaire en cours d'emprunt ne peut pas être retiré : il\
+        \ doit d'abord être rendu."
+      operationId: retirerExemplaire
+      parameters:
+      - name: exemplaireId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: Exemplaire retiré du catalogue
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "409":
+          $ref: "#/components/responses/Conflit"
+components:
+  schemas:
+    ProblemDetail:
+      type: object
+      description: "Erreur au format Problem Details (RFC 9457), sans détail interne."
+      properties:
+        type:
+          type: string
+          example: about:blank
+        title:
+          type: string
+          example: Opération refusée
+        status:
+          type: integer
+          format: int32
+          example: 409
+        detail:
+          type: string
+          example: "L'adhérent a une pénalité impayée : il ne peut plus emprunter"
+        instance:
+          type: string
+          example: /emprunts
+    PenaliteDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adherentId:
+          type: string
+          format: uuid
+        empruntId:
+          type: string
+          format: uuid
+        joursDeRetard:
+          type: integer
+          format: int32
+        montantXof:
+          type: integer
+          format: int32
+        statut:
+          type: string
+          enum:
+          - IMPAYEE
+          - PAYEE
+    AjouterLivreRequest:
+      type: object
+      properties:
+        titre:
+          type: string
+          minLength: 1
+        auteur:
+          type: string
+          minLength: 1
+        nombreExemplaires:
+          type: integer
+          format: int32
+          minimum: 1
+      required:
+      - auteur
+      - titre
+    ExemplaireDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        livreId:
+          type: string
+          format: uuid
+        etat:
+          type: string
+          enum:
+          - DISPONIBLE
+          - EMPRUNTE
+          - RETIRE
+    LivreDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        titre:
+          type: string
+        auteur:
+          type: string
+        exemplairesDisponibles:
+          type: integer
+          format: int32
+        exemplaires:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExemplaireDto"
+    EmpruntRequest:
+      type: object
+      properties:
+        adherentId:
+          type: string
+          format: uuid
+        exemplaireId:
+          type: string
+          format: uuid
+      required:
+      - adherentId
+      - exemplaireId
+    EmpruntDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        adherentId:
+          type: string
+          format: uuid
+        exemplaireId:
+          type: string
+          format: uuid
+        dateEmprunt:
+          type: string
+          format: date
+        dateEcheance:
+          type: string
+          format: date
+        dateRetour:
+          type: string
+          format: date
+    RetourRequest:
+      type: object
+      properties:
+        dateRetour:
+          type: string
+          format: date
+    RetourDto:
+      type: object
+      properties:
+        emprunt:
+          $ref: "#/components/schemas/EmpruntDto"
+        joursDeRetard:
+          type: integer
+          format: int32
+        penalite:
+          $ref: "#/components/schemas/PenaliteDto"
+    InscriptionRequest:
+      type: object
+      properties:
+        nom:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+          - ETUDIANT
+          - ENSEIGNANT
+      required:
+      - nom
+      - type
+    AdherentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        nom:
+          type: string
+        type:
+          type: string
+          enum:
+          - ETUDIANT
+          - ENSEIGNANT
+        quotaEmprunts:
+          type: integer
+          format: int32
+    SituationAdherentDto:
+      type: object
+      properties:
+        adherentId:
+          type: string
+          format: uuid
+        empruntsEnCours:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmpruntDto"
+        penalites:
+          type: array
+          items:
+            $ref: "#/components/schemas/PenaliteDto"
+  responses:
+    RequeteInvalide:
+      description: "Requête invalide ou incomplète (champ manquant, valeur incorrecte)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Introuvable:
+      description: Ressource introuvable.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflit:
+      description: "Règle du métier refusée (quota, pénalité impayée, exemplaire indisponible...)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
