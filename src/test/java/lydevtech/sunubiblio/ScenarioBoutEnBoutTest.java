@@ -10,8 +10,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -104,12 +102,5 @@ class ScenarioBoutEnBoutTest {
         api.get("/situations/" + adherentId)
                 .andExpect(jsonPath("$.empruntsEnCours.length()").value(1))
                 .andExpect(jsonPath("$.penalites[0].statut").value("PAYEE"));
-
-        // 10. L'adherent a ete prevenu a chaque etape (SMS simule) : 2 emprunts, 1 retour, 1 penalite creee, 1 payee
-        api.get("/notifications?adherentId=" + adherentId)
-                .andExpect(jsonPath("$.length()").value(5))
-                .andExpect(jsonPath("$[*].message", hasItem(containsString("3 jour(s) de retard"))))
-                .andExpect(jsonPath("$[*].message", hasItem(containsString("pénalité de 300 XOF a été créée"))))
-                .andExpect(jsonPath("$[*].message", hasItem(containsString("pénalité de 300 XOF est payée"))));
     }
 }

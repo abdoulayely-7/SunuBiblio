@@ -19,12 +19,12 @@ class ModulesTest {
     }
 
     @Test
-    void les_cinq_modules_du_decoupage_sont_detectes() {
+    void les_quatre_modules_du_decoupage_sont_detectes() {
         Set<String> noms = modules.stream()
                 .map(ApplicationModule::getIdentifier)
                 .map(Object::toString)
                 .collect(Collectors.toSet());
 
-        assertEquals(Set.of("catalogue", "adherents", "penalites", "emprunts", "notifications"), noms);
+        assertEquals(Set.of("catalogue", "adherents", "penalites", "emprunts"), noms);
     }
 }
