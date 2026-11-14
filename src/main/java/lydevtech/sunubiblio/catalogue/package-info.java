@@ -1,4 +1,5 @@
-@ApplicationModule(displayName = "Catalogue", allowedDependencies = {})
+@org.springframework.modulith.ApplicationModule(
+    allowedDependencies = {}
+)
 package lydevtech.sunubiblio.catalogue;
 
-import org.springframework.modulith.ApplicationModule;

@@ -1,103 +1,136 @@
 package lydevtech.sunubiblio.catalogue.internal.application;
 
 import lydevtech.sunubiblio.catalogue.CatalogueApi;
-import lydevtech.sunubiblio.catalogue.EtatExemplaire;
 import lydevtech.sunubiblio.catalogue.ExemplaireDto;
 import lydevtech.sunubiblio.catalogue.ExemplaireIndisponibleException;
 import lydevtech.sunubiblio.catalogue.ExemplaireIntrouvableException;
 import lydevtech.sunubiblio.catalogue.LivreDto;
-import lydevtech.sunubiblio.catalogue.LivreIntrouvableException;
 import lydevtech.sunubiblio.catalogue.internal.domain.Exemplaire;
-import lydevtech.sunubiblio.catalogue.internal.domain.ExemplaireRepository;
 import lydevtech.sunubiblio.catalogue.internal.domain.Livre;
 import lydevtech.sunubiblio.catalogue.internal.domain.LivreRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @Transactional
-class CatalogueService implements CatalogueApi {
+public class CatalogueService implements CatalogueApi {
 
-    private final LivreRepository livres;
-    private final ExemplaireRepository exemplaires;
+    private final LivreRepository livreRepository;
 
-    CatalogueService(LivreRepository livres, ExemplaireRepository exemplaires) {
-        this.livres = livres;
-        this.exemplaires = exemplaires;
+    public CatalogueService(LivreRepository livreRepository) {
+        this.livreRepository = livreRepository;
     }
 
     @Override
-    public LivreDto ajouterLivre(String titre, String auteur, int nombreExemplaires) {
+    public LivreDto ajouterLivre(String isbn, String titre, String auteur, int nombreExemplaires) {
         if (nombreExemplaires < 1) {
-            throw new IllegalArgumentException("Un livre doit avoir au moins un exemplaire");
+            throw new IllegalArgumentException("Un livre doit avoir au moins un exemplaire.");
         }
-        Livre livre = Livre.nouveau(titre, auteur);
-        livres.ajouter(livre);
+        Livre livre = livreRepository.findByIsbn(isbn)
+                .orElseGet(() -> new Livre(isbn, titre, auteur));
         for (int i = 0; i < nombreExemplaires; i++) {
-            exemplaires.ajouter(Exemplaire.neuf(livre.id()));
+            String exemplaireId = "EX-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            livre.ajouterExemplaire(exemplaireId);
         }
-        return versDto(livre);
+        livreRepository.save(livre);
+        return toDto(livre);
     }
 
     @Override
-    public ExemplaireDto ajouterExemplaire(UUID livreId) {
-        Livre livre = livres.trouver(livreId).orElseThrow(() -> new LivreIntrouvableException(livreId));
-        Exemplaire exemplaire = Exemplaire.neuf(livre.id());
-        exemplaires.ajouter(exemplaire);
-        return versDto(exemplaire);
-    }
-
-    @Override
-    public void retirerExemplaire(UUID exemplaireId) {
-        Exemplaire exemplaire = charger(exemplaireId);
-        Exemplaire retire = exemplaire.retire();
-        if (!exemplaires.changerEtat(exemplaireId, exemplaire.etat(), retire.etat())) {
-            throw new ExemplaireIndisponibleException(exemplaireId);
-        }
+    public void retirerExemplaire(String exemplaireId) {
+        Livre livre = chargerPourModification(exemplaireId);
+        livre.trouverExemplaire(exemplaireId)
+                .orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId))
+                .retirer();
+        livreRepository.save(livre);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public LivreDto trouverLivre(UUID livreId) {
-        return versDto(livres.trouver(livreId).orElseThrow(() -> new LivreIntrouvableException(livreId)));
+    public boolean estDisponible(String exemplaireId) {
+        return trouverExemplaireInterne(exemplaireId)
+                .map(Exemplaire::isDisponible)
+                .orElse(false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<LivreDto> rechercher(String texte) {
-        return livres.rechercher(texte).stream().map(this::versDto).toList();
-    }
-
-    @Override
-    public void marquerEmprunte(UUID exemplaireId) {
-        Exemplaire exemplaire = charger(exemplaireId);
-        Exemplaire emprunte = exemplaire.emprunte();
-        if (!exemplaires.changerEtat(exemplaireId, exemplaire.etat(), emprunte.etat())) {
-            throw new ExemplaireIndisponibleException(exemplaireId);
+    public void verifierDisponibilite(String exemplaireId) {
+        Exemplaire exemplaire = trouverExemplaireInterne(exemplaireId)
+                .orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId));
+        if (!exemplaire.isDisponible()) {
+            throw new ExemplaireIndisponibleException(exemplaireId, exemplaire.getStatut());
         }
     }
 
     @Override
-    public void marquerDisponible(UUID exemplaireId) {
-        Exemplaire exemplaire = charger(exemplaireId);
-        Exemplaire rendu = exemplaire.rendu();
-        exemplaires.changerEtat(exemplaireId, exemplaire.etat(), rendu.etat());
+    public void marquerEmprunte(String exemplaireId) {
+        Livre livre = chargerPourModification(exemplaireId);
+        livre.trouverExemplaire(exemplaireId)
+                .orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId))
+                .emprunter();
+        livreRepository.save(livre);
     }
 
-    private Exemplaire charger(UUID exemplaireId) {
-        return exemplaires.trouver(exemplaireId).orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId));
+    @Override
+    public void marquerDisponible(String exemplaireId) {
+        Livre livre = chargerPourModification(exemplaireId);
+        livre.trouverExemplaire(exemplaireId)
+                .orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId))
+                .rendre();
+        livreRepository.save(livre);
     }
 
-    private LivreDto versDto(Livre livre) {
-        List<ExemplaireDto> liste = exemplaires.parLivre(livre.id()).stream().map(this::versDto).toList();
-        int disponibles = (int) liste.stream().filter(e -> e.etat() == EtatExemplaire.DISPONIBLE).count();
-        return new LivreDto(livre.id(), livre.titre(), livre.auteur(), disponibles, liste);
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ExemplaireDto> trouverExemplaire(String exemplaireId) {
+        return trouverExemplaireInterne(exemplaireId)
+                .map(this::toDto);
     }
 
-    private ExemplaireDto versDto(Exemplaire exemplaire) {
-        return new ExemplaireDto(exemplaire.id(), exemplaire.livreId(), exemplaire.etat());
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<LivreDto> trouverLivreParIsbn(String isbn) {
+        return livreRepository.findByIsbn(isbn).map(this::toDto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LivreDto> listerLivres() {
+        return livreRepository.findAll().stream().map(this::toDto).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LivreDto> rechercherLivres(String texte) {
+        if (texte == null || texte.isBlank()) {
+            return listerLivres();
+        }
+        return livreRepository.rechercher(texte.trim()).stream().map(this::toDto).toList();
+    }
+
+    private Livre chargerPourModification(String exemplaireId) {
+        return livreRepository.findByExemplaireIdPourModification(exemplaireId)
+                .orElseThrow(() -> new ExemplaireIntrouvableException(exemplaireId));
+    }
+
+    private Optional<Exemplaire> trouverExemplaireInterne(String exemplaireId) {
+        return livreRepository.findByExemplaireId(exemplaireId)
+                .flatMap(livre -> livre.trouverExemplaire(exemplaireId));
+    }
+
+    private LivreDto toDto(Livre livre) {
+        List<ExemplaireDto> exemplaireDtos = livre.getExemplaires().stream()
+                .map(this::toDto)
+                .toList();
+        return new LivreDto(livre.getIsbn(), livre.getTitre(), livre.getAuteur(), exemplaireDtos);
+    }
+
+    private ExemplaireDto toDto(Exemplaire exemplaire) {
+        return new ExemplaireDto(exemplaire.getId(), exemplaire.getLivreIsbn(), exemplaire.getStatut());
     }
 }

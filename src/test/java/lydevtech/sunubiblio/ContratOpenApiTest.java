@@ -31,29 +31,29 @@ class ContratOpenApiTest {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("SunuBiblio"))
-                .andExpect(jsonPath("$.paths['/livres'].post").exists())
-                .andExpect(jsonPath("$.paths['/livres'].get").exists())
-                .andExpect(jsonPath("$.paths['/livres/{livreId}'].get").exists())
-                .andExpect(jsonPath("$.paths['/livres/{livreId}/exemplaires'].post").exists())
-                .andExpect(jsonPath("$.paths['/exemplaires/{exemplaireId}'].delete").exists())
-                .andExpect(jsonPath("$.paths['/adherents'].post").exists())
-                .andExpect(jsonPath("$.paths['/adherents/{adherentId}'].get").exists())
-                .andExpect(jsonPath("$.paths['/emprunts'].post").exists())
-                .andExpect(jsonPath("$.paths['/emprunts/{empruntId}'].get").exists())
-                .andExpect(jsonPath("$.paths['/emprunts/{empruntId}/retour'].post").exists())
-                .andExpect(jsonPath("$.paths['/penalites/{penaliteId}/paiement'].post").exists())
-                .andExpect(jsonPath("$.paths['/situations/{adherentId}'].get").exists());
+                .andExpect(jsonPath("$.paths['/api/catalogue/livres'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/catalogue/livres'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/catalogue/livres/{isbn}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/catalogue/exemplaires/{exemplaireId}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/api/adherents'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/adherents/{adherentId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/prets'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/prets'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/prets/{empruntId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/prets/{empruntId}/restitution'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/penalites/{id}/payer'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/penalites'].get").exists());
     }
 
     @Test
     void les_erreurs_sont_decrites_au_format_problem_details() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/emprunts'].post.responses['409']['$ref']")
+                .andExpect(jsonPath("$.paths['/api/prets'].post.responses['409']['$ref']")
                         .value("#/components/responses/Conflit"))
-                .andExpect(jsonPath("$.paths['/emprunts'].post.responses['404']['$ref']")
+                .andExpect(jsonPath("$.paths['/api/prets'].post.responses['404']['$ref']")
                         .value("#/components/responses/Introuvable"))
-                .andExpect(jsonPath("$.paths['/emprunts'].post.responses['400']['$ref']")
+                .andExpect(jsonPath("$.paths['/api/prets'].post.responses['400']['$ref']")
                         .value("#/components/responses/RequeteInvalide"))
                 .andExpect(jsonPath("$.components.responses.Conflit.content['application/problem+json'].schema['$ref']")
                         .value("#/components/schemas/ProblemDetail"))
@@ -63,11 +63,12 @@ class ContratOpenApiTest {
     @Test
     void les_codes_de_succes_decrits_sont_ceux_du_comportement_reel() throws Exception {
         mvc.perform(get("/v3/api-docs"))
-                .andExpect(jsonPath("$.paths['/livres'].post.responses['201']").exists())
-                .andExpect(jsonPath("$.paths['/exemplaires/{exemplaireId}'].delete.responses['204']").exists())
-                .andExpect(jsonPath("$.paths['/emprunts'].post.responses['201']").exists())
-                .andExpect(jsonPath("$.paths['/emprunts/{empruntId}/retour'].post.responses['200']").exists())
-                .andExpect(jsonPath("$.paths['/penalites/{penaliteId}/paiement'].post.responses['200']").exists());
+                .andExpect(jsonPath("$.paths['/api/catalogue/livres'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/adherents'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/catalogue/exemplaires/{exemplaireId}'].delete.responses['204']").exists())
+                .andExpect(jsonPath("$.paths['/api/prets'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/prets/{empruntId}/restitution'].post.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/penalites/{id}/payer'].post.responses['204']").exists());
     }
 
     @Test

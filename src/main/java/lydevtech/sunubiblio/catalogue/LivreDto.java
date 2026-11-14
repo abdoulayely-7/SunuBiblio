@@ -1,8 +1,11 @@
 package lydevtech.sunubiblio.catalogue;
 
 import java.util.List;
-import java.util.UUID;
 
-public record LivreDto(UUID id, String titre, String auteur, int exemplairesDisponibles,
-                       List<ExemplaireDto> exemplaires) {
-}
+public record LivreDto(
+    String isbn,
+    String titre,
+    String auteur,
+    List<ExemplaireDto> exemplaires
+) {}
+

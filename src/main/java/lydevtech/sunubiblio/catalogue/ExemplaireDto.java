@@ -1,6 +1,8 @@
 package lydevtech.sunubiblio.catalogue;
 
-import java.util.UUID;
+public record ExemplaireDto(
+    String id,
+    String livreIsbn,
+    StatutExemplaire statut
+) {}
 
-public record ExemplaireDto(UUID id, UUID livreId, EtatExemplaire etat) {
-}

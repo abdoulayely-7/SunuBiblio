@@ -13,115 +13,34 @@ tags:
   description: "Livres et exemplaires (F1, F2, F4)"
 - name: Adhérents
   description: Inscription des étudiants et des enseignants (F3)
-- name: Emprunts
-  description: "Prêts, retours et situation d'un adhérent (F5, F6, F7, F9)"
 - name: Pénalités
-  description: Paiement des pénalités de retard (F8)
+  description: "Paiement et consultation des pénalités de retard (F8, F9)"
+- name: Prêts
+  description: "Emprunts, restitutions et emprunts en cours (F5, F6, F7, F9)"
 paths:
-  /penalites/{penaliteId}/paiement:
-    post:
+  /api/prets:
+    get:
       tags:
-      - Pénalités
-      summary: Payer une pénalité (F8)
-      description: "Une fois toutes ses pénalités payées, l'adhérent peut de nouveau\
-        \ emprunter."
-      operationId: payer
+      - Prêts
+      summary: Consulter les emprunts en cours d'un adhérent (F9)
+      operationId: getEmpruntsEnCours
       parameters:
-      - name: penaliteId
-        in: path
+      - name: adherentId
+        in: query
+        description: Identifiant de l'adhérent
         required: true
         schema:
           type: string
-          format: uuid
       responses:
         "200":
-          description: Pénalité payée
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/PenaliteDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
-        "404":
-          $ref: "#/components/responses/Introuvable"
-        "409":
-          $ref: "#/components/responses/Conflit"
-        "500":
-          $ref: "#/components/responses/ErreurInterne"
-        "503":
-          $ref: "#/components/responses/ServiceIndisponible"
-  /livres:
-    get:
-      tags:
-      - Catalogue
-      summary: Rechercher un livre et voir les exemplaires disponibles (F4)
-      operationId: rechercher
-      parameters:
-      - name: q
-        in: query
-        description: "Texte cherché dans le titre ou l'auteur, sans tenir compte des\
-          \ majuscules"
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          description: Les livres dont le titre ou l'auteur contient le texte (tous
-            sans texte)
+          description: "Les emprunts non rendus de l'adhérent, du plus ancien au plus\
+            \ récent"
           content:
             '*/*':
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/LivreDto"
-        "500":
-          $ref: "#/components/responses/ErreurInterne"
-        "503":
-          $ref: "#/components/responses/ServiceIndisponible"
-    post:
-      tags:
-      - Catalogue
-      summary: Ajouter un livre et ses exemplaires (F1)
-      operationId: ajouterLivre
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AjouterLivreRequest"
-        required: true
-      responses:
-        "201":
-          description: "Livre créé, tous ses exemplaires sont disponibles"
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LivreDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
-        "500":
-          $ref: "#/components/responses/ErreurInterne"
-        "503":
-          $ref: "#/components/responses/ServiceIndisponible"
-  /livres/{livreId}/exemplaires:
-    post:
-      tags:
-      - Catalogue
-      summary: Ajouter un exemplaire à un livre existant (F1)
-      operationId: ajouterExemplaire
-      parameters:
-      - name: livreId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "201":
-          description: "Exemplaire créé, disponible"
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/ExemplaireDto"
+                  $ref: "#/components/schemas/EmpruntDto"
         "400":
           $ref: "#/components/responses/RequeteInvalide"
         "404":
@@ -130,10 +49,9 @@ paths:
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /emprunts:
     post:
       tags:
-      - Emprunts
+      - Prêts
       summary: Emprunter un exemplaire (F5)
       description: "Le prêt dure 14 jours. Refusé si l'adhérent a atteint son quota,\
         \ s'il a une pénalité impayée ou si l'exemplaire n'est pas disponible."
@@ -161,34 +79,33 @@ paths:
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /emprunts/{empruntId}/retour:
+  /api/prets/{empruntId}/restitution:
     post:
       tags:
-      - Emprunts
+      - Prêts
       summary: "Rendre un exemplaire (F6, F7)"
       description: "Sans corps, la date de retour est celle du jour. Un retour aprè\
         s l'échéance crée une pénalité de 100 XOF par jour de retard."
-      operationId: rendre
+      operationId: restituer
       parameters:
       - name: empruntId
         in: path
         required: true
         schema:
           type: string
-          format: uuid
       requestBody:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RetourRequest"
+              $ref: "#/components/schemas/RestitutionRequest"
       responses:
         "200":
-          description: Retour enregistré ; la pénalité est absente si l'exemplaire
+          description: Restitution enregistrée ; la pénalité est absente si l'exemplaire
             est rendu à temps
           content:
             '*/*':
               schema:
-                $ref: "#/components/schemas/RetourDto"
+                $ref: "#/components/schemas/RestitutionDto"
         "400":
           $ref: "#/components/responses/RequeteInvalide"
         "404":
@@ -199,7 +116,87 @@ paths:
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /adherents:
+  /api/penalites/{id}/payer:
+    post:
+      tags:
+      - Pénalités
+      summary: Payer une pénalité (F8)
+      description: "Une fois toutes ses pénalités réglées, l'adhérent peut de nouveau\
+        \ emprunter."
+      operationId: payerPenalite
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Pénalité réglée
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "409":
+          $ref: "#/components/responses/Conflit"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
+  /api/catalogue/livres:
+    get:
+      tags:
+      - Catalogue
+      summary: Lister ou rechercher les livres et voir les exemplaires disponibles
+        (F4)
+      operationId: listerLivres
+      parameters:
+      - name: q
+        in: query
+        description: "Texte cherché dans le titre, l'auteur ou l'ISBN, sans tenir\
+          \ compte des majuscules"
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Les livres dont le titre, l'auteur ou l'ISBN contient le texte\
+            \ (tous sans texte)"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LivreDto"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
+    post:
+      tags:
+      - Catalogue
+      summary: Ajouter un livre et ses exemplaires (F1)
+      description: "Si l'ISBN est déjà au catalogue, les nouveaux exemplaires sont\
+        \ ajoutés à ce livre (son titre et son auteur ne changent pas)."
+      operationId: ajouterLivre
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AjouterLivreRequest"
+        required: true
+      responses:
+        "201":
+          description: "Exemplaires créés, tous disponibles"
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LivreDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
+  /api/adherents:
     post:
       tags:
       - Adhérents
@@ -226,66 +223,10 @@ paths:
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /situations/{adherentId}:
+  /api/prets/{empruntId}:
     get:
       tags:
-      - Emprunts
-      summary: Consulter ses emprunts en cours et ses pénalités (F9)
-      operationId: situation
-      parameters:
-      - name: adherentId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: Les emprunts en cours et toutes les pénalités de l'adhérent
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/SituationAdherentDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
-        "404":
-          $ref: "#/components/responses/Introuvable"
-        "500":
-          $ref: "#/components/responses/ErreurInterne"
-        "503":
-          $ref: "#/components/responses/ServiceIndisponible"
-  /livres/{livreId}:
-    get:
-      tags:
-      - Catalogue
-      summary: Consulter un livre et l'état de ses exemplaires
-      operationId: trouverLivre
-      parameters:
-      - name: livreId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      responses:
-        "200":
-          description: "Le livre, avec le nombre d'exemplaires disponibles"
-          content:
-            '*/*':
-              schema:
-                $ref: "#/components/schemas/LivreDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
-        "404":
-          $ref: "#/components/responses/Introuvable"
-        "500":
-          $ref: "#/components/responses/ErreurInterne"
-        "503":
-          $ref: "#/components/responses/ServiceIndisponible"
-  /emprunts/{empruntId}:
-    get:
-      tags:
-      - Emprunts
+      - Prêts
       summary: Consulter un emprunt
       operationId: trouver
       parameters:
@@ -294,7 +235,6 @@ paths:
         required: true
         schema:
           type: string
-          format: uuid
       responses:
         "200":
           description: L'emprunt
@@ -302,19 +242,71 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/EmpruntDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
         "500":
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /adherents/{adherentId}:
+  /api/penalites:
+    get:
+      tags:
+      - Pénalités
+      summary: Consulter les pénalités d'un adhérent (F9)
+      operationId: getPenalitesAdherent
+      parameters:
+      - name: adherentId
+        in: query
+        description: Identifiant de l'adhérent
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: "Toutes les pénalités de l'adhérent, des plus anciennes aux\
+            \ plus récentes"
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PenaliteDto"
+        "400":
+          $ref: "#/components/responses/RequeteInvalide"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
+  /api/catalogue/livres/{isbn}:
+    get:
+      tags:
+      - Catalogue
+      summary: Consulter un livre et l'état de ses exemplaires
+      operationId: getLivre
+      parameters:
+      - name: isbn
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Le livre et ses exemplaires
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/LivreDto"
+        "404":
+          $ref: "#/components/responses/Introuvable"
+        "500":
+          $ref: "#/components/responses/ErreurInterne"
+        "503":
+          $ref: "#/components/responses/ServiceIndisponible"
+  /api/adherents/{adherentId}:
     get:
       tags:
       - Adhérents
-      summary: Consulter un adhérent
+      summary: "Consulter un adhérent, son quota et son éventuel blocage"
       operationId: trouver_1
       parameters:
       - name: adherentId
@@ -322,23 +314,20 @@ paths:
         required: true
         schema:
           type: string
-          format: uuid
       responses:
         "200":
-          description: L'adhérent et son quota d'emprunts
+          description: L'adhérent
           content:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AdherentDto"
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
         "500":
           $ref: "#/components/responses/ErreurInterne"
         "503":
           $ref: "#/components/responses/ServiceIndisponible"
-  /exemplaires/{exemplaireId}:
+  /api/catalogue/exemplaires/{exemplaireId}:
     delete:
       tags:
       - Catalogue
@@ -352,12 +341,9 @@ paths:
         required: true
         schema:
           type: string
-          format: uuid
       responses:
         "204":
           description: Exemplaire retiré du catalogue
-        "400":
-          $ref: "#/components/responses/RequeteInvalide"
         "404":
           $ref: "#/components/responses/Introuvable"
         "409":
@@ -409,32 +395,88 @@ components:
         message:
           type: string
           example: Le titre du livre est obligatoire.
+    EmpruntRequest:
+      type: object
+      properties:
+        adherentId:
+          type: string
+          minLength: 1
+        exemplaireId:
+          type: string
+          minLength: 1
+      required:
+      - adherentId
+      - exemplaireId
+    EmpruntDto:
+      type: object
+      properties:
+        id:
+          type: string
+        adherentId:
+          type: string
+        exemplaireId:
+          type: string
+        dateEmprunt:
+          type: string
+          format: date
+        dateEcheance:
+          type: string
+          format: date
+        dateRetour:
+          type: string
+          format: date
+        statut:
+          type: string
+          enum:
+          - EN_COURS
+          - RESTITUE
+    RestitutionRequest:
+      type: object
+      properties:
+        dateRetour:
+          type: string
+          format: date
     PenaliteDto:
       type: object
       properties:
         id:
           type: string
-          format: uuid
         adherentId:
           type: string
-          format: uuid
-        empruntId:
+        exemplaireId:
           type: string
-          format: uuid
         joursDeRetard:
           type: integer
-          format: int32
-        montantXof:
+          format: int64
+        montant:
           type: integer
-          format: int32
+          format: int64
         statut:
           type: string
           enum:
           - IMPAYEE
-          - PAYEE
+          - REGLEE
+        dateCreation:
+          type: string
+          format: date-time
+    RestitutionDto:
+      type: object
+      properties:
+        emprunt:
+          $ref: "#/components/schemas/EmpruntDto"
+        joursDeRetard:
+          type: integer
+          format: int32
+        penalite:
+          $ref: "#/components/schemas/PenaliteDto"
     AjouterLivreRequest:
       type: object
       properties:
+        isbn:
+          type: string
+          maxLength: 32
+          minLength: 0
+          pattern: "[0-9A-Za-z-]*"
         titre:
           type: string
           maxLength: 255
@@ -450,6 +492,7 @@ components:
           minimum: 1
       required:
       - auteur
+      - isbn
       - nombreExemplaires
       - titre
     ExemplaireDto:
@@ -457,11 +500,9 @@ components:
       properties:
         id:
           type: string
-          format: uuid
-        livreId:
+        livreIsbn:
           type: string
-          format: uuid
-        etat:
+        statut:
           type: string
           enum:
           - DISPONIBLE
@@ -470,69 +511,16 @@ components:
     LivreDto:
       type: object
       properties:
-        id:
+        isbn:
           type: string
-          format: uuid
         titre:
           type: string
         auteur:
           type: string
-        exemplairesDisponibles:
-          type: integer
-          format: int32
         exemplaires:
           type: array
           items:
             $ref: "#/components/schemas/ExemplaireDto"
-    EmpruntRequest:
-      type: object
-      properties:
-        adherentId:
-          type: string
-          format: uuid
-        exemplaireId:
-          type: string
-          format: uuid
-      required:
-      - adherentId
-      - exemplaireId
-    EmpruntDto:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        adherentId:
-          type: string
-          format: uuid
-        exemplaireId:
-          type: string
-          format: uuid
-        dateEmprunt:
-          type: string
-          format: date
-        dateEcheance:
-          type: string
-          format: date
-        dateRetour:
-          type: string
-          format: date
-    RetourRequest:
-      type: object
-      properties:
-        dateRetour:
-          type: string
-          format: date
-    RetourDto:
-      type: object
-      properties:
-        emprunt:
-          $ref: "#/components/schemas/EmpruntDto"
-        joursDeRetard:
-          type: integer
-          format: int32
-        penalite:
-          $ref: "#/components/schemas/PenaliteDto"
     InscriptionRequest:
       type: object
       properties:
@@ -553,7 +541,6 @@ components:
       properties:
         id:
           type: string
-          format: uuid
         nom:
           type: string
         type:
@@ -564,20 +551,11 @@ components:
         quotaEmprunts:
           type: integer
           format: int32
-    SituationAdherentDto:
-      type: object
-      properties:
-        adherentId:
-          type: string
-          format: uuid
-        empruntsEnCours:
-          type: array
-          items:
-            $ref: "#/components/schemas/EmpruntDto"
-        penalites:
-          type: array
-          items:
-            $ref: "#/components/schemas/PenaliteDto"
+        estBloquePourImpayes:
+          type: boolean
+        montantImpaye:
+          type: integer
+          format: int64
   responses:
     RequeteInvalide:
       description: "Requête invalide : corps absent ou illisible, champ manquant ou\

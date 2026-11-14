@@ -2,13 +2,19 @@ package lydevtech.sunubiblio.catalogue.internal.domain;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 public interface LivreRepository {
 
-    void ajouter(Livre livre);
+    Livre save(Livre livre);
 
-    Optional<Livre> trouver(UUID id);
+    Optional<Livre> findByIsbn(String isbn);
+
+    Optional<Livre> findByExemplaireId(String exemplaireId);
+
+    /** Comme {@link #findByExemplaireId}, en verrouillant l'exemplaire : deux emprunts simultanés ne se croisent pas. */
+    Optional<Livre> findByExemplaireIdPourModification(String exemplaireId);
+
+    List<Livre> findAll();
 
     List<Livre> rechercher(String texte);
 }

@@ -1,39 +1,62 @@
 package lydevtech.sunubiblio.catalogue.internal.domain;
 
-import lydevtech.sunubiblio.catalogue.EtatExemplaire;
 import lydevtech.sunubiblio.catalogue.ExemplaireEtatInvalideException;
 import lydevtech.sunubiblio.catalogue.ExemplaireIndisponibleException;
+import lydevtech.sunubiblio.catalogue.StatutExemplaire;
 
-import java.util.UUID;
+public class Exemplaire {
 
-public record Exemplaire(UUID id, UUID livreId, EtatExemplaire etat) {
+    private final String id;
+    private final String livreIsbn;
+    private StatutExemplaire statut;
 
-    public static Exemplaire neuf(UUID livreId) {
-        return new Exemplaire(UUID.randomUUID(), livreId, EtatExemplaire.DISPONIBLE);
+    public Exemplaire(String id, String livreIsbn) {
+        this.id = id;
+        this.livreIsbn = livreIsbn;
+        this.statut = StatutExemplaire.DISPONIBLE;
     }
 
-    public Exemplaire emprunte() {
-        if (etat != EtatExemplaire.DISPONIBLE) {
-            throw new ExemplaireIndisponibleException(id, etat);
+    /** Reconstruit un exemplaire déjà enregistré, dans son état courant. */
+    public static Exemplaire restaurer(String id, String livreIsbn, StatutExemplaire statut) {
+        Exemplaire exemplaire = new Exemplaire(id, livreIsbn);
+        exemplaire.statut = statut;
+        return exemplaire;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public String getLivreIsbn() {
+        return livreIsbn;
+    }
+
+    public StatutExemplaire getStatut() {
+        return statut;
+    }
+
+    public boolean isDisponible() {
+        return this.statut == StatutExemplaire.DISPONIBLE;
+    }
+
+    public void emprunter() {
+        if (!isDisponible()) {
+            throw new ExemplaireIndisponibleException(id, statut);
         }
-        return avecEtat(EtatExemplaire.EMPRUNTE);
+        this.statut = StatutExemplaire.EMPRUNTE;
     }
 
-    public Exemplaire rendu() {
-        if (etat != EtatExemplaire.EMPRUNTE) {
-            throw new ExemplaireEtatInvalideException(id, "il n'est pas en cours d'emprunt");
+    public void rendre() {
+        if (this.statut != StatutExemplaire.EMPRUNTE) {
+            throw new ExemplaireEtatInvalideException(id, "il n'est pas en cours d'emprunt.");
         }
-        return avecEtat(EtatExemplaire.DISPONIBLE);
+        this.statut = StatutExemplaire.DISPONIBLE;
     }
 
-    public Exemplaire retire() {
-        if (etat == EtatExemplaire.EMPRUNTE) {
-            throw new ExemplaireEtatInvalideException(id, "il est en cours d'emprunt, il doit d'abord être rendu");
+    public void retirer() {
+        if (this.statut == StatutExemplaire.EMPRUNTE) {
+            throw new ExemplaireEtatInvalideException(id, "il est en cours d'emprunt : il doit d'abord être rendu.");
         }
-        return avecEtat(EtatExemplaire.RETIRE);
-    }
-
-    private Exemplaire avecEtat(EtatExemplaire nouvelEtat) {
-        return new Exemplaire(id, livreId, nouvelEtat);
+        this.statut = StatutExemplaire.RETIRE;
     }
 }

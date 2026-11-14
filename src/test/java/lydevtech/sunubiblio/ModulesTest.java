@@ -25,6 +25,6 @@ class ModulesTest {
                 .map(Object::toString)
                 .collect(Collectors.toSet());
 
-        assertEquals(Set.of("catalogue", "adherents", "penalites", "emprunts"), noms);
+        assertEquals(Set.of("catalogue", "adherent", "penalite", "pret"), noms);
     }
 }

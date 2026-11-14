@@ -44,9 +44,9 @@ class ErreursServeurIntegrationTest {
 
     @Test
     void une_erreur_inattendue_donne_500_avec_un_identifiant_de_suivi_et_sans_detail_interne() throws Exception {
-        when(catalogue.rechercher(any())).thenThrow(new IllegalStateException("secret interne de la base"));
+        when(catalogue.rechercherLivres(any())).thenThrow(new IllegalStateException("secret interne de la base"));
 
-        api.get("/livres")
+        api.get("/api/catalogue/livres")
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.title").value("Erreur interne"))
@@ -59,9 +59,9 @@ class ErreursServeurIntegrationTest {
 
     @Test
     void le_numero_de_suivi_du_message_est_celui_de_la_propriete_traceId() throws Exception {
-        when(catalogue.rechercher(any())).thenThrow(new IllegalStateException("panne"));
+        when(catalogue.rechercherLivres(any())).thenThrow(new IllegalStateException("panne"));
 
-        var reponse = api.get("/livres").andExpect(status().isInternalServerError());
+        var reponse = api.get("/api/catalogue/livres").andExpect(status().isInternalServerError());
         String traceId = ApiClient.lire(reponse, "$.traceId");
         String detail = ApiClient.lire(reponse, "$.detail");
 
@@ -70,10 +70,10 @@ class ErreursServeurIntegrationTest {
 
     @Test
     void une_base_de_donnees_indisponible_donne_503_avec_retry_after() throws Exception {
-        when(catalogue.rechercher(any())).thenThrow(
+        when(catalogue.rechercherLivres(any())).thenThrow(
                 new CannotGetJdbcConnectionException("Failed to obtain JDBC Connection", new SQLException("connexion refusee")));
 
-        api.get("/livres")
+        api.get("/api/catalogue/livres")
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(header().string("Retry-After", "5"))
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
@@ -86,9 +86,9 @@ class ErreursServeurIntegrationTest {
 
     @Test
     void une_violation_de_contrainte_de_la_base_donne_409_et_non_500() throws Exception {
-        when(catalogue.rechercher(any())).thenThrow(new DataIntegrityViolationException("duplicate key value violates ..."));
+        when(catalogue.rechercherLivres(any())).thenThrow(new DataIntegrityViolationException("duplicate key value violates ..."));
 
-        api.get("/livres")
+        api.get("/api/catalogue/livres")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Conflit de données"))
                 .andExpect(jsonPath("$.detail").value(containsString("en conflit avec des données existantes")))
