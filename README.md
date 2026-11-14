@@ -97,6 +97,15 @@ cp .env.example .env        # puis renseigner DB_URL, DB_USERNAME et DB_PASSWORD
 ./mvnw spring-boot:run
 ```
 
+Sous Windows PowerShell, depuis le dossier du projet :
+
+```powershell
+Copy-Item .env.example .env   # puis renseigner DB_URL, DB_USERNAME et DB_PASSWORD
+.\mvnw.cmd spring-boot:run
+```
+
+Les autres commandes `./mvnw ...` de ce document s'écrivent `.\mvnw.cmd ...` sous PowerShell.
+
 Le fichier `.env` n'est jamais commité. Les tables sont créées au démarrage.
 
 ### L'API REST
